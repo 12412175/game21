@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>21点</title>
+<style>
+    * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    :root{
+        --bg:#E7E2DB; --card-bg:#F3EFE9;
+        --morandi-green:#A3B1A1; --morandi-blue:#9DAAB6;
+        --morandi-rose:#C4A5A0; --morandi-gray:#B4B0A8;
+        --text-dark:#5C574F; --text-light:#8A8479;
+        --accent:#A8846F; --gold:#C2A661;
+    }
+    body{
+        font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+        background:var(--bg); color:var(--text-dark);
+        min-height:100vh; display:flex; justify-content:center; align-items:stretch;
+    }
+    .app{
+        width:100%; max-width:480px; min-height:100vh;
+        display:flex; flex-direction:column; padding:16px;
+    }
+
+    /* 顶部状态栏 */
+    .topbar{
+        display:flex; justify-content:space-between; align-items:center;
+        background:var(--card-bg); border-radius:14px; padding:12px 18px; margin-bottom:14px;
+    }
+    .stat{ font-size:18px; font-weight:600; color:var(--text-dark); letter-spacing:1px; }
+    .trophies{ display:flex; gap:6px; }
+    .trophy{
+        width:24px; height:24px; border-radius:6px; overflow:hidden;
+        display:flex; align-items:center; justify-content:center;
+        background:var(--bg); border:1px solid #DDD6CC;
+    }
+    .trophy img{ width:100%; height:100%; object-fit:cover; }
+    .trophy.empty{ opacity:.3; }
+    .trophy .ph{ font-size:12px; color:var(--morandi-gray); }
+
+    .deck-info{ text-align:center; font-size:11px; color:var(--text-light); margin-bottom:12px; letter-spacing:1px; }
+
+    /* 玩家区域 */
+    .player-area{
+        background:var(--card-bg); border-radius:16px; padding:14px; margin-bottom:12px; transition:box-shadow .3s;
+    }
+    .player-area.active{ box-shadow:0 0 0 2px var(--morandi-green); }
+    .player-area.opponent.active{ box-shadow:0 0 0 2px var(--morandi-blue); }
+    .player-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+    .player-name{ font-size:14px; font-weight:600; display:flex; align-items:center; gap:8px; }
+    .avatar{
+        width:34px; height:34px; border-radius:50%; overflow:hidden;
+        background:var(--morandi-gray); display:flex; align-items:center; justify-content:center;
+        color:#F3EFE9; font-size:13px; font-weight:600; flex-shrink:0;
+    }
+    .avatar img{ width:100%; height:100%; object-fit:cover; }
+    .player-status{ font-size:11px; color:var(--text-light); padding:3px 10px; background:var(--bg); border-radius:10px; }
+    .player-total{ font-size:15px; font-weight:600; color:var(--accent); }
+
+    /* 卡牌 */
+    .cards{ display:flex; flex-wrap:wrap; gap:8px; min-height:68px; align-content:flex-start; }
+    .card{
+        width:46px; height:64px; border-radius:10px; background:#FBF9F5; border:1.5px solid #E2DCD2;
+        display:flex; justify-content:center; align-items:center; font-size:22px; font-weight:600;
+        color:var(--text-dark); box-shadow:0 2px 5px rgba(120,110,95,.08); animation:dealIn .35s ease;
+    }
+    .card.back{ background:var(--morandi-gray); color:transparent; position:relative; }
+    .card.back::after{ content:"?"; color:#F3EFE9; font-size:20px; }
+    @keyframes dealIn{ from{opacity:0;transform:translateY(-14px) scale(.85);} to{opacity:1;transform:translateY(0) scale(1);} }
+
+    .message{ text-align:center; font-size:14px; color:var(--text-dark); min-height:22px; margin:6px 0 12px; font-weight:500; letter-spacing:1px; }
+
+    /* 按钮 */
+    .controls{ display:flex; gap:12px; margin-top:auto; }
+    .btn{
+        flex:1; padding:16px; border:none; border-radius:14px; font-size:16px; font-weight:600;
+        color:#FBF9F5; letter-spacing:2px; cursor:pointer; transition:transform .1s, opacity .2s;
+    }
+    .btn:active{ transform:scale(.96); }
+    .btn.hit{ background:var(--morandi-green); }
+    .btn.stand{ background:var(--morandi-rose); }
+    .btn.restart{ background:var(--accent); }
+    .btn:disabled{ opacity:.4; cursor:default; }
+
+    /* 通用遮罩 */
+    .overlay{
+        position:fixed; inset:0; background:rgba(231,226,219,.96);
+        display:none; flex-direction:column; justify-content:center; align-items:center;
+        text-align:center; padding:30px; z-index:10;
+    }
+    .overlay.show{ display:flex; }
+    .overlay h2{ font-size:24px; color:var(--accent); letter-spacing:3px; margin-bottom:14px; }
+    .overlay p{ color:var(--text-light); margin-bottom:20px; font-size:14px; line-height:1.6; }
+
+    /* 开始设置界面 */
+    .setup-avatar{
+        width:110px; height:110px; border-radius:50%; overflow:hidden; background:var(--card-bg);
+        border:2px dashed var(--morandi-gray); display:flex; align-items:center; justify-content:center;
+        margin-bottom:16px; cursor:pointer; color:var(--text-light); font-size:12px; text-align:center; padding:8px;
+    }
+    .setup-avatar img{ width:100%; height:100%; object-fit:cover; }
+    .name-input{
+        width:100%; max-width:260px; padding:12px 16px; border:1.5px solid #DDD6CC; border-radius:12px;
+        background:var(--card-bg); color:var(--text-dark); font-size:15px; text-align:center; margin-bottom:20px; outline:none;
+    }
+    .name-input:focus{ border-color:var(--morandi-green); }
+
+    /* 战利品弹窗 */
+    .loot-img{
+        width:150px; height:150px; border-radius:18px; overflow:hidden; margin-bottom:16px;
+        background:var(--card-bg); display:flex; align-items:center; justify-content:center;
+        box-shadow:0 6px 18px rgba(120,110,95,.18); color:var(--text-light); font-size:13px; padding:10px; text-align:center;
+    }
+    .loot-img img{ width:100%; height:100%; object-fit:cover; }
+    .loot-name{ font-size:18px; font-weight:600; color:var(--gold); margin-bottom:24px; letter-spacing:2px; }
+
+    .final-trophies{ display:flex; gap:10px; margin-bottom:24px; flex-wrap:wrap; justify-content:center; }
+    .final-trophies .trophy{ width:44px; height:44px; border-radius:10px; }
+</style>
+</head>
+<body>
+<div class="app">
+    <div class="topbar">
+        <div class="stat" id="scoreStat">0/0</div>
+        <div class="trophies" id="trophies"></div>
+    </div>
+
+    <div class="deck-info" id="deckInfo">牌堆剩余：7 张</div>
+
+    <!-- 对手 -->
+    <div class="player-area opponent" id="oppArea">
+        <div class="player-head">
+            <div class="player-name">
+                <span class="avatar" id="oppAvatar"></span>
+                <span id="oppName">黄铭金</span>
+            </div>
+            <div class="player-status" id="oppStatus">等待中</div>
+        </div>
+        <div class="cards" id="oppCards"></div>
+        <div style="text-align:right;margin-top:8px;"><span class="player-total" id="oppTotal"></span></div>
+    </div>
+
+    <!-- 玩家 -->
+    <div class="player-area" id="myArea">
+        <div class="player-head">
+            <div class="player-name">
+                <span class="avatar" id="myAvatar"></span>
+                <span id="myName">你</span>
+            </div>
+            <div class="player-status" id="myStatus">等待中</div>
+        </div>
+        <div class="cards" id="myCards"></div>
+        <div style="text-align:right;margin-top:8px;"><span class="player-total" id="myTotal">总和：0</span></div>
+    </div>
+
+    <div class="message" id="message">你的回合，抽牌或停牌</div>
+
+    <div class="controls" id="controls">
+        <button class="btn hit" id="hitBtn">抽 牌</button>
+        <button class="btn stand" id="standBtn">停 牌</button>
+    </div>
+</div>
+
+<!-- 开始设置 -->
+<div class="overlay show" id="setupOverlay">
+    <h2>21 点</h2>
+    <label class="setup-avatar" id="setupAvatar">
+        点击上传头像
+        <input type="file" id="avatarInput" accept="image/*" style="display:none;">
+    </label>
+    <input type="text" class="name-input" id="nameInput" placeholder="输入你的名称" maxlength="10">
+    <button class="btn restart" id="startBtn" style="max-width:220px;">开 始 游 戏</button>
+</div>
+
+<!-- 战利品弹窗 -->
+<div class="overlay" id="lootOverlay">
+    <h2>获得战利品</h2>
+    <div class="loot-img" id="lootImg"></div>
+    <div class="loot-name" id="lootName"></div>
+    <button class="btn restart" id="lootNext" style="max-width:220px;">下 一 关</button>
+</div>
+
+<!-- 通关 -->
+<div class="overlay" id="winOverlay">
+    <h2>全部通关</h2>
+    <p id="winText">恭喜你！集齐全部裤衩！</p>
+    <div class="final-trophies" id="finalTrophies"></div>
+    <button class="btn restart" id="playAgain" style="max-width:220px;">重 新 开 始</button>
+</div>
+
+<script>
+(function(){
+    // ===== 对手配置（含图片路径、难度）=====
+    // 图片放在 GitHub 仓库的 images 文件夹，256×256
+    const OPPONENTS = [
+        { name:'黄铭金',    avatar:'images/huangmingjin.png',loot:'images/loot5.png', strat:'reckless' },
+        { name:'李红旗1.0', avatar:'images/lihongqi1.png',  loot:'images/loot1.png',  strat:2 },
+        { name:'李红旗2.0', avatar:'images/lihongqi2.png',  loot:'images/loot2.png',  strat:3 },
+        { name:'李红旗2.5', avatar:'images/lihongqi25.png', loot:'images/loot3.png',  strat:4 },
+        { name:'李红旗3.0', avatar:'images/lihongqi3.png',  loot:'images/loot4.png',  strat:5 }
+    ];
+    const TOTAL = OPPONENTS.length;
+
+    // ===== 状态 =====
+    let deck=[], myCards=[], oppCards=[];
+    let myStand=false, oppStand=false, gameOver=false;
+    let myWins=0, totalGames=0, trophies=0, oppIndex=0;
+    let playerName='你', playerAvatar='';
+
+    const $ = id => document.getElementById(id);
+
+    // 头像/图片填充（带失败兜底）
+    function fillImg(el, src, fallbackText){
+        el.innerHTML='';
+        if(src){
+            const img=document.createElement('img');
+            img.src=src; img.alt=fallbackText;
+            img.onerror=()=>{ el.innerHTML='<span class="ph">'+fallbackText+'</span>'; };
+            el.appendChild(img);
+        } else {
+            el.innerHTML='<span class="ph">'+fallbackText+'</span>';
+        }
+    }
+
+    // 每局重建 11 张牌 (1-11 各一张) 并洗牌
+    function buildDeck(){
+        deck=[];
+        for(let v=1;v<=11;v++) deck.push(v);
+        for(let i=deck.length-1;i>0;i--){
+            const j=Math.floor(Math.random()*(i+1));
+            [deck[i],deck[j]]=[deck[j],deck[i]];
+        }
+    }
+    function sum(c){ return c.reduce((a,b)=>a+b,0); }
+    function canDraw(){ return deck.length>0; }
+    function draw(){ return deck.pop(); }
+
+    function renderCards(el, cards, hideHole){
+        el.innerHTML='';
+        cards.forEach((v,i)=>{
+            const d=document.createElement('div');
+            if(hideHole && i===0){ d.className='card back'; }
+            else { d.className='card'; d.textContent=v; }
+            el.appendChild(d);
+        });
+    }
+    function oppVisibleSum(){ return oppCards.slice(1).reduce((a,b)=>a+b,0); }
+
+    function renderTrophies(){
+        const el=$('trophies'); el.innerHTML='';
+        for(let i=0;i<TOTAL;i++){
+            const t=document.createElement('div');
+            if(i<trophies){
+                t.className='trophy';
+                fillImg(t, OPPONENTS[i].loot, '战');
+            } else {
+                t.className='trophy empty';
+                t.innerHTML='<span class="ph">?</span>';
+            }
+            el.appendChild(t);
+        }
+    }
+
+    function updateUI(reveal){
+        renderCards($('myCards'), myCards, false);
+        renderCards($('oppCards'), oppCards, !reveal);
+
+        $('myTotal').textContent='总和：'+sum(myCards);
+        $('oppTotal').textContent = reveal
+            ? '总和：'+sum(oppCards)
+            : (oppCards.length>0 ? '明面：'+oppVisibleSum() : '');
+
+        $('myStatus').textContent = myStand ? '已停牌':'进行中';
+        $('oppStatus').textContent = oppStand ? '已停牌':'进行中';
+
+        const opp=OPPONENTS[oppIndex];
+        $('oppName').textContent = opp.name;
+        fillImg($('oppAvatar'), opp.avatar, opp.name.slice(0,2));
+        $('myName').textContent = playerName;
+        fillImg($('myAvatar'), playerAvatar, playerName.slice(0,1));
+
+        $('deckInfo').textContent='牌堆剩余：'+deck.length+' 张';
+        $('scoreStat').textContent = myWins+'/'+totalGames;
+        renderTrophies();
+
+        $('myArea').classList.toggle('active', !myStand && !gameOver);
+        $('oppArea').classList.toggle('active', myStand && !oppStand && !gameOver);
+    }
+
+    function setMessage(t){ $('message').textContent=t; }
+    function setControlsDisabled(d){
+        const h=$('hitBtn'), s=$('standBtn');
+        if(h) h.disabled=d; if(s) s.disabled=d;
+    }
+    function updateControlsState(){
+        if(gameOver||myStand) return;
+        const h=$('hitBtn'); if(h) h.disabled=!canDraw();
+        if(!canDraw()) setMessage('牌堆已空，只能停牌');
+    }
+
+    // ===== 玩家操作 =====
+    function playerHit(){
+        if(gameOver||myStand||!canDraw()) return;
+        myCards.push(draw());
+        updateUI(false);
+        if(sum(myCards)>21){ setMessage('你爆牌了！'); myStand=true; endGame(); }
+        else if(sum(myCards)===21){ setMessage('你拿到 21 点！自动停牌'); playerStand(); }
+        else updateControlsState();
+    }
+    function playerStand(){
+        if(gameOver||myStand) return;
+        myStand=true; updateUI(false);
+        setMessage('你已停牌，'+OPPONENTS[oppIndex].name+' 行动中…');
+        setControlsDisabled(true);
+        setTimeout(opponentTurn,800);
+    }
+
+    // ===== 对手 AI =====
+    function aiShouldHit(strat, oppSum, mySum, myBust){
+        if(strat==='reckless'){
+            if(oppSum>=21) return false;
+            if(oppSum>=20) return Math.random()<0.5; 
+            return true; 
+        }
+
+        if(myBust){
+            if(strat===2) return oppSum<11;
+            return false; 
+        }
+        const seen = myCards.concat(oppCards.slice(1));
+        const known = seen.concat([oppCards[0]]);
+        const remaining = [];
+        for(let v=1;v<=11;v++) if(!known.includes(v)) remaining.push(v);
+
+        switch(strat){
+            case 2: 
+                return oppSum<17;
+            case 3: 
+                if(oppSum>21) return false;
+                if(oppSum<15) return true;
+                if(oppSum<mySum) return true;
+                if(oppSum===mySum) return oppSum<19;
+                return false;
+            case 4: { 
+                if(oppSum>=21) return false;
+                if(oppSum>=mySum && oppSum>=17) return false;
+                if(remaining.length===0) return false;
+                const bustCount = remaining.filter(v=>oppSum+v>21).length;
+                const bustProb = bustCount/remaining.length;
+                if(oppSum<mySum) return bustProb<0.6;
+                return bustProb<0.35;
+            }
+            case 5: { 
+                if(oppSum>=21) return false;
+                if(remaining.length===0) return false;
+                const safeCount = remaining.filter(v=>oppSum+v<=21).length;
+                const bustProb = 1 - safeCount/remaining.length;
+                if(oppSum>mySum){
+                    return oppSum<19 && bustProb<0.25;
+                }
+                if(oppSum===mySum){
+                    return oppSum<20 && bustProb<0.55;
+                }
+                return bustProb<0.85;
+            }
+        }
+        return oppSum<17;
+    }
+
+    function opponentTurn(){
+        if(gameOver) return;
+        const strat=OPPONENTS[oppIndex].strat;
+        function step(){
+            if(gameOver) return;
+            const myBust=sum(myCards)>21;
+            const oppSum=sum(oppCards);
+            if(!canDraw()){ oppStand=true; setMessage('牌堆已空，开牌！'); setTimeout(endGame,600); return; }
+            if(aiShouldHit(strat, oppSum, sum(myCards), myBust)){
+                oppCards.push(draw());
+                updateUI(false);
+                if(sum(oppCards)>21){ oppStand=true; setMessage(OPPONENTS[oppIndex].name+' 爆牌了！'); setTimeout(endGame,700); return; }
+                setTimeout(step,800);
+            } else {
+                oppStand=true; setMessage(OPPONENTS[oppIndex].name+' 停牌，开牌！'); setTimeout(endGame,700);
+            }
+        }
+        step();
+    }
+
+    // ===== 结算 =====
+    function endGame(){
+        gameOver=true; totalGames++;
+        updateUI(true); setControlsDisabled(true);
+
+        const m=sum(myCards), o=sum(oppCards);
+        const mBust=m>21, oBust=o>21;
+        let won=false, result='';
+        const on=OPPONENTS[oppIndex].name;
+
+        if(mBust&&oBust) result='双方都爆牌，平局！';
+        else if(mBust) result='你爆牌，本局告负！';
+        else if(oBust){ result=on+' 爆牌，你获胜！'; won=true; }
+        else if(m>o){ result='你 '+m+' : '+o+' '+on+'，你获胜！'; won=true; }
+        else if(o>m) result='你 '+m+' : '+o+' '+on+'，本局告负！';
+        else result=m+' : '+o+'，平局！';
+
+        setMessage(result);
+
+        if(won){
+            myWins++; trophies++;
+            updateUI(true);
+            setTimeout(showLoot, 800);
+        } else {
+            showRetryButton();
+        }
+    }
+
+    function showRetryButton(){
+        const c=$('controls'); c.innerHTML='';
+        const b=document.createElement('button');
+        b.className='btn restart'; b.textContent='再 来 一 局';
+        b.onclick=()=>newRound(false);
+        c.appendChild(b);
+    }
+    function showPlayControls(){
+        const c=$('controls'); c.innerHTML='';
+        const hit=document.createElement('button');
+        hit.className='btn hit'; hit.id='hitBtn'; hit.textContent='抽 牌'; hit.onclick=playerHit;
+        const st=document.createElement('button');
+        st.className='btn stand'; st.id='standBtn'; st.textContent='停 牌'; st.onclick=playerStand;
+        c.appendChild(hit); c.appendChild(st);
+    }
+
+    // ===== 战利品弹窗 =====
+    function showLoot(){
+        const opp=OPPONENTS[oppIndex];
+        const lootName=opp.name+'的裤衩';
+        fillImg($('lootImg'), opp.loot, lootName);
+        $('lootName').textContent=lootName;
+        const btn=$('lootNext');
+        if(trophies>=TOTAL){
+            btn.textContent='查 看 战 果';
+            btn.onclick=()=>{ $('lootOverlay').classList.remove('show'); showVictory(); };
+        } else {
+            btn.textContent='下 一 关';
+            btn.onclick=()=>{ $('lootOverlay').classList.remove('show'); newRound(true); };
+        }
+        $('lootOverlay').classList.add('show');
+    }
+
+    function showVictory(){
+        const ft=$('finalTrophies'); ft.innerHTML='';
+        for(let i=0;i<TOTAL;i++){
+            const t=document.createElement('div'); t.className='trophy';
+            fillImg(t, OPPONENTS[i].loot, '战');
+            ft.appendChild(t);
+        }
+        $('winText').textContent='恭喜你！集齐所有裤衩！战绩 '+myWins+'/'+totalGames;
+        $('winOverlay').classList.add('show');
+    }
+
+    // ===== 新一局 =====
+    function newRound(advance){
+        if(advance) oppIndex++;
+        buildDeck();
+        myCards=[draw(),draw()]; oppCards=[draw(),draw()];
+        myStand=false; oppStand=false; gameOver=false;
+        showPlayControls(); setControlsDisabled(false);
+        setMessage('对上 '+OPPONENTS[oppIndex].name+'，你的回合');
+        updateUI(false); updateControlsState();
+        if(sum(myCards)===21){ setMessage('开局 21 点！自动停牌'); playerStand(); }
+    }
+
+    function fullRestart(){
+        myWins=0; totalGames=0; trophies=0; oppIndex=0;
+        $('winOverlay').classList.remove('show');
+        newRound(false);
+    }
+
+    // ===== 开始设置 =====
+    $('avatarInput').addEventListener('change', e=>{
+        const f=e.target.files[0];
+        if(!f) return;
+        const r=new FileReader();
+        r.onload=ev=>{
+            playerAvatar=ev.target.result;
+            const box=$('setupAvatar');
+            box.innerHTML='<img src="'+playerAvatar+'" alt="头像">';
+            box.appendChild($('avatarInput'));
+        };
+        r.readAsDataURL(f);
+    });
+    $('startBtn').addEventListener('click', ()=>{
+        const n=$('nameInput').value.trim();
+        playerName = n || '你';
+        $('setupOverlay').classList.remove('show');
+        fullRestart();
+    });
+    $('playAgain').addEventListener('click', ()=>{
+        $('winOverlay').classList.remove('show');
+        $('setupOverlay').classList.add('show');
+    });
+})();
+</script>
+</body>
+</html>
