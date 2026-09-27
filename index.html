@@ -191,14 +191,14 @@
 
 <script>
 (function(){
-    // ===== 对手配置（含图片路径、难度）=====
-    // 图片放在 GitHub 仓库的 images 文件夹，256×256
+    // ===== 配置（含图片路径、难度）=====
+    const BASE = 'https://raw.githubusercontent.com/12412175/game21/main/images/';
     const OPPONENTS = [
-        { name:'黄铭金',    avatar:'images/huangmingjin.png',loot:'images/loot5.png', strat:'reckless' },
-        { name:'李红旗1.0', avatar:'images/lihongqi1.png',  loot:'images/loot1.png',  strat:2 },
-        { name:'李红旗2.0', avatar:'images/lihongqi2.png',  loot:'images/loot2.png',  strat:3 },
-        { name:'李红旗2.5', avatar:'images/lihongqi25.png', loot:'images/loot3.png',  strat:4 },
-        { name:'李红旗3.0', avatar:'images/lihongqi3.png',  loot:'images/loot4.png',  strat:5 }
+        { name:'黄铭金',    avatar:BASE+'huangmingjin.png', loot:BASE+'loot5.png', strat:'reckless' },
+        { name:'李红旗1.0', avatar:BASE+'lihongqi1.png',   loot:BASE+'loot1.png', strat:2 },
+        { name:'李红旗2.0', avatar:BASE+'lihongqi2.png',   loot:BASE+'loot2.png', strat:3 },
+        { name:'李红旗2.5', avatar:BASE+'lihongqi25.png',  loot:BASE+'loot3.png', strat:4 },
+        { name:'李红旗3.0', avatar:BASE+'lihongqi3.png',   loot:BASE+'loot4.png', strat:5 }
     ];
     const TOTAL = OPPONENTS.length;
 
