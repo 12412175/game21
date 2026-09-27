@@ -77,6 +77,8 @@
         flex:1; padding:16px; border:none; border-radius:14px; font-size:16px; font-weight:600;
         color:#FBF9F5; letter-spacing:2px; cursor:pointer; transition:transform .1s, opacity .2s;
     }
+    /* 固定高度按钮：用于开始/下一关/重新开始等弹窗按钮 */
+    .btn.fixed-h{ flex:none; height:52px; padding:0 24px; display:inline-flex; align-items:center; justify-content:center; }
     .btn:active{ transform:scale(.96); }
     .btn.hit{ background:var(--morandi-green); }
     .btn.stand{ background:var(--morandi-rose); }
@@ -170,7 +172,7 @@
         <input type="file" id="avatarInput" accept="image/*" style="display:none;">
     </label>
     <input type="text" class="name-input" id="nameInput" placeholder="输入你的名称" maxlength="10">
-    <button class="btn restart" id="startBtn" style="max-width:220px;">开 始 游 戏</button>
+    <button class="btn restart fixed-h" id="startBtn" style="max-width:220px;">开 始 游 戏</button>
 </div>
 
 <!-- 战利品弹窗 -->
@@ -178,7 +180,7 @@
     <h2>获得战利品</h2>
     <div class="loot-img" id="lootImg"></div>
     <div class="loot-name" id="lootName"></div>
-    <button class="btn restart" id="lootNext" style="max-width:220px;">下 一 关</button>
+    <button class="btn restart fixed-h" id="lootNext" style="max-width:220px;">下 一 关</button>
 </div>
 
 <!-- 通关 -->
@@ -186,19 +188,23 @@
     <h2>全部通关</h2>
     <p id="winText">恭喜你！集齐全部裤衩！</p>
     <div class="final-trophies" id="finalTrophies"></div>
-    <button class="btn restart" id="playAgain" style="max-width:220px;">重 新 开 始</button>
+    <button class="btn restart fixed-h" id="playAgain" style="max-width:220px;">重 新 开 始</button>
 </div>
 
 <script>
 (function(){
     // ===== 配置（含图片路径、难度）=====
     const BASE = 'https://raw.githubusercontent.com/12412175/game21/main/images/';
+    // 关卡顺序：
+    //   黄铭金  —— 点数 <17 就一直抽牌（庄家规则）
+    //   之后为作弊型对手，winProb = 让玩家获胜的概率
     const OPPONENTS = [
-        { name:'黄铭金',    avatar:BASE+'huangmingjin.png', loot:BASE+'loot5.png', strat:'reckless' },
-        { name:'李红旗1.0', avatar:BASE+'lihongqi1.png',   loot:BASE+'loot1.png', strat:2 },
-        { name:'李红旗2.0', avatar:BASE+'lihongqi2.png',   loot:BASE+'loot2.png', strat:3 },
-        { name:'李红旗2.5', avatar:BASE+'lihongqi25.png',  loot:BASE+'loot3.png', strat:4 },
-        { name:'李红旗3.0', avatar:BASE+'lihongqi3.png',   loot:BASE+'loot4.png', strat:5 }
+        { name:'黄铭金',    avatar:BASE+'huangmingjin.png', loot:BASE+'loot5.png', strat:'dealer17' },
+        { name:'李红旗1.0', avatar:BASE+'lihongqi1.png',    loot:BASE+'loot1.png', winProb:0.80 },
+        { name:'李红旗2.0', avatar:BASE+'lihongqi2.png',    loot:BASE+'loot2.png', winProb:0.60 },
+        { name:'李红旗2.5', avatar:BASE+'lihongqi25.png',   loot:BASE+'loot3.png', winProb:0.40 },
+        { name:'李红旗3.0', avatar:BASE+'lihongqi3.png',    loot:BASE+'loot4.png', winProb:0.20 },
+        { name:'成乙',      avatar:BASE+'chengyi.png',      loot:BASE+'loot6.png', winProb:0.1 }
     ];
     const TOTAL = OPPONENTS.length;
 
@@ -317,66 +323,19 @@
     }
 
     // ===== 对手 AI =====
-    function aiShouldHit(strat, oppSum, mySum, myBust){
-        if(strat==='reckless'){
-            if(oppSum>=21) return false;
-            if(oppSum>=20) return Math.random()<0.5; 
-            return true; 
-        }
-
-        if(myBust){
-            if(strat===2) return oppSum<11;
-            return false; 
-        }
-        const seen = myCards.concat(oppCards.slice(1));
-        const known = seen.concat([oppCards[0]]);
-        const remaining = [];
-        for(let v=1;v<=11;v++) if(!known.includes(v)) remaining.push(v);
-
-        switch(strat){
-            case 2: 
-                return oppSum<17;
-            case 3: 
-                if(oppSum>21) return false;
-                if(oppSum<15) return true;
-                if(oppSum<mySum) return true;
-                if(oppSum===mySum) return oppSum<19;
-                return false;
-            case 4: { 
-                if(oppSum>=21) return false;
-                if(oppSum>=mySum && oppSum>=17) return false;
-                if(remaining.length===0) return false;
-                const bustCount = remaining.filter(v=>oppSum+v>21).length;
-                const bustProb = bustCount/remaining.length;
-                if(oppSum<mySum) return bustProb<0.6;
-                return bustProb<0.35;
-            }
-            case 5: { 
-                if(oppSum>=21) return false;
-                if(remaining.length===0) return false;
-                const safeCount = remaining.filter(v=>oppSum+v<=21).length;
-                const bustProb = 1 - safeCount/remaining.length;
-                if(oppSum>mySum){
-                    return oppSum<19 && bustProb<0.25;
-                }
-                if(oppSum===mySum){
-                    return oppSum<20 && bustProb<0.55;
-                }
-                return bustProb<0.85;
-            }
-        }
+    // 黄铭金：庄家规则，点数 <17 就一直抽牌
+    function aiShouldHit(oppSum){
         return oppSum<17;
     }
 
-    function opponentTurn(){
+    // 普通（非作弊）对手回合：目前仅黄铭金使用
+    function normalOpponentTurn(){
         if(gameOver) return;
-        const strat=OPPONENTS[oppIndex].strat;
         function step(){
             if(gameOver) return;
-            const myBust=sum(myCards)>21;
             const oppSum=sum(oppCards);
             if(!canDraw()){ oppStand=true; setMessage('牌堆已空，开牌！'); setTimeout(endGame,600); return; }
-            if(aiShouldHit(strat, oppSum, sum(myCards), myBust)){
+            if(aiShouldHit(oppSum)){
                 oppCards.push(draw());
                 updateUI(false);
                 if(sum(oppCards)>21){ oppStand=true; setMessage(OPPONENTS[oppIndex].name+' 爆牌了！'); setTimeout(endGame,700); return; }
@@ -386,6 +345,68 @@
             }
         }
         step();
+    }
+
+    // 作弊对手：偷换底牌(oppCards[0]) + 后续要发的牌，按 winProb 决定放不放玩家赢
+    // 返回需要“抽出”的额外牌数组（用于动画）
+    function rigOpponent(){
+        const opp=OPPONENTS[oppIndex];
+        const m=sum(myCards);         // 玩家最终点数
+        const up=oppCards[1];         // 对手明牌（保持不变）
+        let playerWins = (m<=21) && (Math.random()<opp.winProb);
+
+        let target; // 对手目标最终点数（>21 表示故意爆牌）
+        if(m>21){
+            // 玩家已爆，无论如何都判负；对手随便站一个不爆的点数
+            target = Math.max(up+1, Math.min(21, 17));
+            if(target<up+1) target=up+1;
+            if(target>21) target=21;
+        } else if(playerWins){
+            // 让玩家赢：对手点数低于玩家，或干脆爆牌
+            if(m-1 >= up+1) target = m-1;
+            else target = 22; // 无法低于玩家 → 故意爆牌
+        } else {
+            // 让玩家输：对手点数高于玩家且不爆（玩家=21 时只能打平）
+            if(m+1 <= 21) target = Math.max(m+1, up+1);
+            else target = 21;
+        }
+
+        // 根据目标点数拆出：底牌 + 若干额外牌（每张 1~11）
+        let need = target - up;
+        if(need < 1){ need = 1; }   // 安全兜底
+        const seq=[];
+        while(need>0){ const c=Math.min(11,need); seq.push(c); need-=c; }
+
+        oppCards[0] = seq[0];       // 偷换底牌
+        return seq.slice(1);        // 偷换未发的牌（额外抽出的部分）
+    }
+
+    function riggedOpponentTurn(){
+        if(gameOver) return;
+        setMessage(OPPONENTS[oppIndex].name+' 行动中…');
+        const extras = rigOpponent();
+        updateUI(false); // 底牌仍隐藏，玩家看不出被换
+        let i=0;
+        function step(){
+            if(gameOver) return;
+            if(i<extras.length){
+                oppCards.push(extras[i]); i++;
+                updateUI(false);
+                setTimeout(step,700);
+            } else {
+                oppStand=true;
+                setMessage(OPPONENTS[oppIndex].name+' 停牌，开牌！');
+                setTimeout(endGame,600);
+            }
+        }
+        setTimeout(step,700);
+    }
+
+    function opponentTurn(){
+        if(gameOver) return;
+        const opp=OPPONENTS[oppIndex];
+        if(opp.winProb!==undefined){ riggedOpponentTurn(); return; }
+        normalOpponentTurn();
     }
 
     // ===== 结算 =====
