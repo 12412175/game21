@@ -135,7 +135,7 @@
         <div class="player-head">
             <div class="player-name">
                 <span class="avatar" id="oppAvatar"></span>
-                <span id="oppName">黄铭金</span>
+                <span id="oppName">金sir</span>
             </div>
             <div class="player-status" id="oppStatus">等待中</div>
         </div>
@@ -196,15 +196,15 @@
     // ===== 配置（含图片路径、难度）=====
     const BASE = 'https://raw.githubusercontent.com/12412175/game21/main/images/';
     // 关卡顺序：
-    //   黄铭金  —— 点数 <17 就一直抽牌（庄家规则）
+    //   金sir  —— 点数 <17 就一直抽牌（庄家规则）
     //   之后为作弊型对手，winProb = 让玩家获胜的概率
     const OPPONENTS = [
-        { name:'黄铭金',    avatar:BASE+'huangmingjin.png', loot:BASE+'loot5.png', strat:'dealer17' },
-        { name:'李红旗1.0', avatar:BASE+'lihongqi1.png',    loot:BASE+'loot1.png', winProb:0.80 },
-        { name:'李红旗2.0', avatar:BASE+'lihongqi2.png',    loot:BASE+'loot2.png', winProb:0.60 },
-        { name:'李红旗2.5', avatar:BASE+'lihongqi25.png',   loot:BASE+'loot3.png', winProb:0.40 },
-        { name:'李红旗3.0', avatar:BASE+'lihongqi3.png',    loot:BASE+'loot4.png', winProb:0.20 },
-        { name:'成乙',      avatar:BASE+'chengyi.png',      loot:BASE+'loot6.png', winProb:0.1 }
+        { name:'金sir',    avatar:BASE+'huangmingjin.png', loot:BASE+'loot5.png', strat:'dealer17' },
+        { name:'旗sir1.0', avatar:BASE+'lihongqi1.png',    loot:BASE+'loot1.png', winProb:0.80 },
+        { name:'旗sir2.0', avatar:BASE+'lihongqi2.png',    loot:BASE+'loot2.png', winProb:0.60 },
+        { name:'旗sir2.5', avatar:BASE+'lihongqi25.png',   loot:BASE+'loot3.png', winProb:0.40 },
+        { name:'旗sir3.0', avatar:BASE+'lihongqi3.png',    loot:BASE+'loot4.png', winProb:0.20 },
+        { name:'瞎子',      avatar:BASE+'chengyi.png',      loot:BASE+'loot6.png', winProb:0.1 }
     ];
     const TOTAL = OPPONENTS.length;
 
@@ -323,12 +323,12 @@
     }
 
     // ===== 对手 AI =====
-    // 黄铭金：庄家规则，点数 <17 就一直抽牌
+    // 金sir：庄家规则，点数 <17 就一直抽牌
     function aiShouldHit(oppSum){
         return oppSum<17;
     }
 
-    // 普通（非作弊）对手回合：目前仅黄铭金使用
+    // 普通（非作弊）对手回合：目前仅金sir使用
     function normalOpponentTurn(){
         if(gameOver) return;
         function step(){
