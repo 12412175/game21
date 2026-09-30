@@ -77,7 +77,6 @@
         flex:1; padding:16px; border:none; border-radius:14px; font-size:16px; font-weight:600;
         color:#FBF9F5; letter-spacing:2px; cursor:pointer; transition:transform .1s, opacity .2s;
     }
-    /* 固定高度按钮：用于开始/下一关/重新开始等弹窗按钮 */
     .btn.fixed-h{ flex:none; height:52px; padding:0 24px; display:inline-flex; align-items:center; justify-content:center; }
     .btn:active{ transform:scale(.96); }
     .btn.hit{ background:var(--morandi-green); }
@@ -193,18 +192,16 @@
 
 <script>
 (function(){
-    // ===== 配置（含图片路径、难度）=====
+    // ===== 配置 =====
     const BASE = 'https://raw.githubusercontent.com/12412175/game21/main/images/';
     // 关卡顺序：
-    //   金sir  —— 点数 <17 就一直抽牌（庄家规则）
-    //   之后为作弊型对手，winProb = 让玩家获胜的概率
     const OPPONENTS = [
         { name:'金sir',    avatar:BASE+'huangmingjin.png', loot:BASE+'loot5.png', strat:'dealer17' },
-        { name:'旗sir1.0', avatar:BASE+'lihongqi1.png',    loot:BASE+'loot1.png', winProb:0.80 },
-        { name:'旗sir2.0', avatar:BASE+'lihongqi2.png',    loot:BASE+'loot2.png', winProb:0.60 },
-        { name:'旗sir2.5', avatar:BASE+'lihongqi25.png',   loot:BASE+'loot3.png', winProb:0.40 },
-        { name:'旗sir3.0', avatar:BASE+'lihongqi3.png',    loot:BASE+'loot4.png', winProb:0.20 },
-        { name:'瞎子',      avatar:BASE+'chengyi.png',      loot:BASE+'loot6.png', winProb:0.1 }
+        { name:'旗sir1.0', avatar:BASE+'lihongqi1.png',    loot:BASE+'loot1.png', strat:'dealer17' },
+        { name:'旗sir2.0', avatar:BASE+'lihongqi2.png',    loot:BASE+'loot2.png', strat:'dealer17' },
+        { name:'旗sir2.5', avatar:BASE+'lihongqi25.png',   loot:BASE+'loot3.png', strat:'dealer17' },
+        { name:'旗sir3.0', avatar:BASE+'lihongqi3.png',    loot:BASE+'loot4.png', strat:'dealer17' },
+        { name:'瞎子',      avatar:BASE+'chengyi.png',      loot:BASE+'loot6.png', winProb:0.05 } 
     ];
     const TOTAL = OPPONENTS.length;
 
@@ -310,7 +307,7 @@
         if(gameOver||myStand||!canDraw()) return;
         myCards.push(draw());
         updateUI(false);
-        if(sum(myCards)>21){ setMessage('你爆牌了！'); myStand=true; endGame(); }
+        if(sum(myCards)>21){ setMessage('你爆了！'); myStand=true; endGame(); }
         else if(sum(myCards)===21){ setMessage('你拿到 21 点！自动停牌'); playerStand(); }
         else updateControlsState();
     }
@@ -323,12 +320,12 @@
     }
 
     // ===== 对手 AI =====
-    // 金sir：庄家规则，点数 <17 就一直抽牌
+    // 庄家规则：点数 <17 就一直抽牌
     function aiShouldHit(oppSum){
         return oppSum<17;
     }
 
-    // 普通（非作弊）对手回合：目前仅金sir使用
+    // 普通（非作弊）对手回合：金sir / 旗sir系列 使用
     function normalOpponentTurn(){
         if(gameOver) return;
         function step(){
@@ -338,7 +335,7 @@
             if(aiShouldHit(oppSum)){
                 oppCards.push(draw());
                 updateUI(false);
-                if(sum(oppCards)>21){ oppStand=true; setMessage(OPPONENTS[oppIndex].name+' 爆牌了！'); setTimeout(endGame,700); return; }
+                if(sum(oppCards)>21){ oppStand=true; setMessage(OPPONENTS[oppIndex].name+' 爆了！'); setTimeout(endGame,700); return; }
                 setTimeout(step,800);
             } else {
                 oppStand=true; setMessage(OPPONENTS[oppIndex].name+' 停牌，开牌！'); setTimeout(endGame,700);
@@ -405,6 +402,7 @@
     function opponentTurn(){
         if(gameOver) return;
         const opp=OPPONENTS[oppIndex];
+        // 如果配置了 winProb，则使用作弊规则；否则使用庄家规则
         if(opp.winProb!==undefined){ riggedOpponentTurn(); return; }
         normalOpponentTurn();
     }
@@ -419,11 +417,11 @@
         let won=false, result='';
         const on=OPPONENTS[oppIndex].name;
 
-        if(mBust&&oBust) result='双方都爆牌，平局！';
-        else if(mBust) result='你爆牌，本局告负！';
-        else if(oBust){ result=on+' 爆牌，你获胜！'; won=true; }
-        else if(m>o){ result='你 '+m+' : '+o+' '+on+'，你获胜！'; won=true; }
-        else if(o>m) result='你 '+m+' : '+o+' '+on+'，本局告负！';
+        if(mBust&&oBust) result='都爆了，平局！';
+        else if(mBust) result='你爆了，再见！';
+        else if(oBust){ result=on+' 爆了，你赢了！'; won=true; }
+        else if(m>o){ result='你 '+m+' : '+o+' '+on+'，你赢了！'; won=true; }
+        else if(o>m) result='你 '+m+' : '+o+' '+on+'，再见！';
         else result=m+' : '+o+'，平局！';
 
         setMessage(result);
